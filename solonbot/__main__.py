@@ -1,3 +1,5 @@
 import solon
 
-solon.say_hello()
+from solonbot import *
+
+solon.Bot.run(solon.get_config("token"))

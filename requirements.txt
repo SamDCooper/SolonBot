@@ -1,1 +1,1 @@
--e git+ssh://git@github.com/FalselyTrueBots/solon@ff88adea69f09dcb26ab72d4870f4939213ec7f8#egg=solon-0.0.1
+-e git+ssh://git@github.com/FalselyTrueBots/solon@master#egg=solon-0.0.1
