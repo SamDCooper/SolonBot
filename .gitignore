@@ -1,0 +1,9 @@
+.idea/
+venv/*
+*.pyc
+SolonBot.egg-info/*
+build/*
+dist/*
+config.json
+database/
+logs/
