@@ -15,3 +15,4 @@ from .Scoreboards import *
 from .Welcome import *
 from .Archive import *
 from .Blog import *
+from .Activity import *
