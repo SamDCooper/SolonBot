@@ -1,54 +1,50 @@
 import logging
 
-from solon import Cog
-from solon import Command
-from solon import get_config
-from solon import get_identifier
-from solon import get_scoreboard_by_identifier
-from solon import get_name_from_user_id
-from solon import CommandError
+import discord
+import solon
 
 __all__ = []
 
 log = logging.getLogger(__name__)
-config = get_config(__name__)
+config = solon.get_config(__name__)
 
 log.info(f"Loading {__name__}")
 
 default_settings = {
-    "line_format": {"value_serialized": "#{rank} {name}: {score:.2f}", "type_name": "str"},
-    "line_format_me": {"value_serialized": "**#{rank} {name}: {score:.2f}**", "type_name": "str"},
+    "line_format": {"value_serialized": "#{rank} {name}: {score:.0f}", "type_name": "str"},
+    "line_format_me": {"value_serialized": "**#{rank} {name}: {score:.0f}**", "type_name": "str"},
     "display_num_ranks": {"value_serialized": "15", "type_name": "int"},
-    "my_ranks_buffer": {"value_serialized": "2", "type_name": "int"}
+    "my_ranks_buffer": {"value_serialized": "2", "type_name": "int"},
+    "thumbnail_url": {"value_serialized": "", "type_name": "str"}
 }
 
 
-@Cog(guild_local=True, default_settings=default_settings)
+@solon.Cog(guild_local=True, default_settings=default_settings)
 class Scoreboards:
     def __init__(self, guild_id, settings):
         self.settings = settings
         self.guild_id = guild_id
 
-    @Command()
+    @solon.Command()
     async def highscores(self, ctx, scoreboard_name):
-        identifier = get_identifier(scoreboard_name, ctx.guild.id)
-        sb = get_scoreboard_by_identifier(identifier)
+        identifier = solon.get_identifier(scoreboard_name, ctx.guild.id)
+        sb = solon.get_scoreboard_by_identifier(identifier)
         num_to_show = self.settings["display_num_ranks"]
-        await self.show_scoreboard(ctx, sorted(sb.items(), key=lambda kv: -kv[1]), num_to_show, 0)
+        await self.show_scoreboard(ctx, scoreboard_name, sorted(sb.items(), key=lambda kv: -kv[1]), num_to_show, 0)
 
-    @Command()
+    @solon.Command()
     async def lowscores(self, ctx, scoreboard_name):
-        identifier = get_identifier(scoreboard_name, ctx.guild.id)
-        sb = get_scoreboard_by_identifier(identifier)
+        identifier = solon.get_identifier(scoreboard_name, ctx.guild.id)
+        sb = solon.get_scoreboard_by_identifier(identifier)
         num_to_show = self.settings["display_num_ranks"]
-        await self.show_scoreboard(ctx, sorted(sb.items(), key=lambda kv: +kv[1]), num_to_show, 0)
+        await self.show_scoreboard(ctx, scoreboard_name, sorted(sb.items(), key=lambda kv: +kv[1]), num_to_show, 0)
 
-    @Command()
+    @solon.Command()
     async def score(self, ctx, scoreboard_name):
-        identifier = get_identifier(scoreboard_name, ctx.guild.id)
-        sb = get_scoreboard_by_identifier(identifier)
+        identifier = solon.get_identifier(scoreboard_name, ctx.guild.id)
+        sb = solon.get_scoreboard_by_identifier(identifier)
         if ctx.message.author.id not in sb:
-            raise CommandError("You aren't ranked yet.")
+            raise solon.CommandError("You aren't ranked yet.")
 
         buffer = self.settings["my_ranks_buffer"]
         num_to_show = 1 + 2 * buffer
@@ -60,9 +56,9 @@ class Scoreboards:
                 break
             my_rank = my_rank + 1
 
-        await self.show_scoreboard(ctx, sorted_scoreboard, num_to_show, my_rank - buffer)
+        await self.show_scoreboard(ctx, scoreboard_name, sorted_scoreboard, num_to_show, my_rank - buffer)
 
-    async def show_scoreboard(self, ctx, scoreboard_sorted, num_to_show, starting_from):
+    async def show_scoreboard(self, ctx, scoreboard_name, scoreboard_sorted, num_to_show, starting_from):
         board_txt = ""
 
         num_ranks_to_show = num_to_show
@@ -70,7 +66,7 @@ class Scoreboards:
             index = rank + starting_from
             if 0 <= index < len(scoreboard_sorted):
                 user_id, score = scoreboard_sorted[index]
-                name = get_name_from_user_id(self.guild_id, user_id)
+                name = solon.get_name_from_user_id(self.guild_id, user_id)
 
                 if user_id == ctx.message.author.id:
                     fmt = self.settings["line_format_me"]
@@ -80,6 +76,14 @@ class Scoreboards:
                 formatted_rank_line = fmt.format(rank=index + 1, name=name, score=score)
                 board_txt += formatted_rank_line + "\n"
         if board_txt:
-            await ctx.send(board_txt)
+            title = f"Leaderboard for {scoreboard_name} on {ctx.guild.name}"
+
+            embed = discord.Embed(title=title, description=board_txt)
+
+            thumbnail_url = self.settings["thumbnail_url"]
+            if thumbnail_url:
+                embed.set_thumbnail(url=thumbnail_url)
+
+            await ctx.send(embed=embed)
         else:
             await ctx.send("Scoreboard is too empty for that right now.")
