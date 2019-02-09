@@ -19,7 +19,12 @@ default_settings = {
     "added_emoji": {"value_serialized": "👌", "type_name": "Emoji"},
     "fail_emoji": {"value_serialized": "👎", "type_name": "Emoji"},
     "react_threshold": {"value_serialized": "3", "type_name": "int"},
+    "thumbnail_url": {"value_serialized": "", "type_name": "str"}
 }
+
+
+def message_is_by(message, user):
+    return message["author_id"] == user.id
 
 
 class Data:
@@ -41,6 +46,8 @@ class Quoting:
     async def quote(self, ctx, user: solon.converter(discord.Member) = None):
         if user is None:
             messages = self.data.messages
+        else:
+            messages = [msg for msg in self.data.messages if message_is_by(msg, user)]
 
         num_messages = len(messages)
 
@@ -58,20 +65,31 @@ class Quoting:
             index = random.randint(0, num_messages - 1)
             quote = messages[index]
 
+        await ctx.send(embed=self.create_embed(quote))
+
+    def create_embed(self, quote):
         embed = discord.Embed(description=quote["content"])
 
         author = solon.Bot.get_guild(self.guild_id).get_member(quote["author_id"])
         if author:
             author_name = solon.get_name_from_user_id(self.guild_id, quote["author_id"])
+            avatar_url = author.avatar_url
         else:
+            # use backups
             author_name = quote["author_name"]
+            avatar_url = quote["avatar_url"]
+
         time_as_str = datetime.datetime.utcfromtimestamp(quote["date"]).strftime("%d/%m/%y")
-        embed.set_author(name=f"{author_name} ({time_as_str})", icon_url=quote["avatar_url"])
+        embed.set_author(name=f"{author_name} ({time_as_str})", icon_url=avatar_url)
 
         if quote["attachments"]:
             embed.set_image(url=quote["attachments"])
 
-        await ctx.send(embed=embed)
+        thumbnail_url = self.settings["thumbnail_url"]
+        if thumbnail_url:
+            embed.set_thumbnail(url=thumbnail_url)
+
+        return embed
 
     def create_message_record(self, message):
         if message.content == "" and len(message.attachments) == 0:
