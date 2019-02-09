@@ -1,6 +1,7 @@
-import logging
-
+import datetime
 import discord
+import logging
+import random
 import solon
 
 __all__ = []
@@ -13,7 +14,7 @@ log.info(f"Loading {__name__}")
 role_list_name = solon.SerializedList(discord.Role).__name__
 
 default_settings = {
-    "can_quote": {"value_serialized": "", "type_name": role_list_name},
+    "can_vote": {"value_serialized": "", "type_name": role_list_name},
     "quote_emoji": {"value_serialized": "🗨", "type_name": "Emoji"},
     "added_emoji": {"value_serialized": "👌", "type_name": "Emoji"},
     "fail_emoji": {"value_serialized": "👎", "type_name": "Emoji"},
@@ -37,8 +38,40 @@ class Quoting:
         self.recorded_messages = []  # list of message ids
 
     @solon.Command()
-    async def quote(self, ctx, user: solon.converter(discord.Member)):
-        await ctx.send("Pong!")
+    async def quote(self, ctx, user: solon.converter(discord.Member) = None):
+        if user is None:
+            messages = self.data.messages
+
+        num_messages = len(messages)
+
+        if num_messages == 0:
+            if user is None:
+                await ctx.send("I don't have any quotes stored yet!")
+            else:
+                await ctx.send("I don't have any quotes stored for that user yet!")
+            return
+
+        elif num_messages == 1:
+            quote = messages[0]
+
+        else:
+            index = random.randint(0, num_messages - 1)
+            quote = messages[index]
+
+        embed = discord.Embed(description=quote["content"])
+
+        author = solon.Bot.get_guild(self.guild_id).get_member(quote["author_id"])
+        if author:
+            author_name = solon.get_name_from_user_id(self.guild_id, quote["author_id"])
+        else:
+            author_name = quote["author_name"]
+        time_as_str = datetime.datetime.utcfromtimestamp(quote["date"]).strftime("%d/%m/%y")
+        embed.set_author(name=f"{author_name} ({time_as_str})", icon_url=quote["avatar_url"])
+
+        if quote["attachments"]:
+            embed.set_image(url=quote["attachments"])
+
+        await ctx.send(embed=embed)
 
     def create_message_record(self, message):
         if message.content == "" and len(message.attachments) == 0:
@@ -65,7 +98,7 @@ class Quoting:
         return True
 
     def authorized_to_vote(self, user):
-        can_vote_roles = self.settings["can_quote"]
+        can_vote_roles = self.settings["can_vote"]
         if can_vote_roles is None:
             log.warning(f"Nobody is authorised to vote on {solon.Bot.get_guild(self.guild_id)}.")
             return False
