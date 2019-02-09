@@ -1,0 +1,10 @@
+#!/bin/bash
+
+DIRECTORY_NAME=$(basename $1 .whl)
+
+mkdir $DIRECTORY_NAME
+python3 -m virtualenv $DIRECTORY_NAME/venv
+source $DIRECTORY_NAME/venv/bin/activate
+
+pip install $1
+cp -r ${@:2} $DIRECTORY_NAME/
