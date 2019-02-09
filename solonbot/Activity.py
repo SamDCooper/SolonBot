@@ -13,8 +13,8 @@ log.info(f"Loading {__name__}")
 int_to_role_name = solon.SerializedDictionary(int, discord.Role).__name__
 
 default_settings = {
-    "ranking_message_delay": {"value_serialized": "2s", "type_name": "timedelta"},
-    "decay_interval": {"value_serialized": "20s", "type_name": "timedelta"},
+    "ranking_message_delay": {"value_serialized": "1m", "type_name": "timedelta"},
+    "decay_interval": {"value_serialized": "1w", "type_name": "timedelta"},
     "depreciation_factor": {"value_serialized": "0.96", "type_name": "float"},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
