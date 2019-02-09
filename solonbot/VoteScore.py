@@ -90,7 +90,7 @@ class VoteScore:
         if up_emoji and emoji_equals(reaction.emoji, up_emoji):
             if self.authorized_to_vote(user):
                 log.info(f"{user} added upvote to message by {author} ({reaction.message.id})")
-                await self.add_vote(author, 1)
+                self.add_vote(author, 1)
             else:
                 log.info(f"{user} tried to upvote message by {author}, but did not have permission. "
                          f"({reaction.message.id})")
@@ -98,7 +98,7 @@ class VoteScore:
         elif down_emoji and emoji_equals(reaction.emoji, down_emoji):
             if self.authorized_to_vote(user):
                 log.info(f"{user} added downvote to message by {author} ({reaction.message.id})")
-                await self.add_vote(author, -1)
+                self.add_vote(author, -1)
             else:
                 log.info(f"{user} tried to downvote message by {author}, but did not have permission. "
                          f"({reaction.message.id})")
@@ -106,13 +106,20 @@ class VoteScore:
     @Event()
     async def on_reaction_remove(self, reaction, user):
         author = reaction.message.author
+        if author.bot:
+            return
+
+        if author.id == user.id:
+            return
+
+        author = reaction.message.author
         up_emoji = self.settings["up_emoji"]
         down_emoji = self.settings["down_emoji"]
 
         if up_emoji and emoji_equals(reaction.emoji, up_emoji):
             if self.authorized_to_vote(user):
                 log.info(f"{user} removed upvote on message by {author} ({reaction.message.id})")
-                await self.remove_vote(author, 1)
+                self.remove_vote(author, 1)
             else:
                 log.info(f"{user} tried to remove upvote on message by {author}, but did not have permission. "
                          f"({reaction.message.id})")
@@ -120,13 +127,13 @@ class VoteScore:
         elif down_emoji and emoji_equals(reaction.emoji, down_emoji):
             if self.authorized_to_vote(user):
                 log.info(f"{user} removed downvote on message by {author} ({reaction.message.id})")
-                await self.remove_vote(author, -1)
+                self.remove_vote(author, -1)
             else:
                 log.info(f"{user} tried to remove upvote on message by {author}, but did not have permission. "
                          f"({reaction.message.id})")
 
-    async def add_vote(self, author, multiplier):
+    def add_vote(self, author, multiplier):
         self.set_score(author, self.score(author) + multiplier)
 
-    async def remove_vote(self, author, multiplier):
+    def remove_vote(self, author, multiplier):
         self.set_score(author, self.score(author) - multiplier)
