@@ -122,10 +122,10 @@ class Quoting:
             added = self.add_vote(message)
             if added is not None:
                 if added and self.settings["added_emoji"]:
-                    await message.add_reaction(self.settings["added_emoji"])
+                    await message.add_reaction(self.settings["added_emoji"].discord_py_emoji)
 
                 elif not added and self.settings["fail_emoji"]:
-                    await message.add_reaction(self.settings["fail_emoji"])
+                    await message.add_reaction(self.settings["fail_emoji"].discord_py_emoji)
 
     @solon.Event()
     async def on_reaction_remove(self, reaction, user):
