@@ -15,6 +15,7 @@ role_list_name = solon.SerializedList(discord.Role).__name__
 
 default_settings = {
     "can_vote": {"value_serialized": "", "type_name": role_list_name},
+    "can_delete_quotes": {"value_serialized": "", "type_name": role_list_name},
     "quote_emoji": {"value_serialized": "🗨", "type_name": "Emoji"},
     "added_emoji": {"value_serialized": "👌", "type_name": "Emoji"},
     "fail_emoji": {"value_serialized": "👎", "type_name": "Emoji"},
@@ -67,8 +68,38 @@ class Quoting:
 
         await ctx.send(embed=self.create_embed(quote))
 
+    @solon.Command()
+    async def q(self, ctx, quote_code):
+        quote = next((q for q in self.data.messages if q["quote_id"] == int(quote_code)), None)
+        if not quote:
+            await ctx.send(f"{ctx.author.mention} Sorry, I can't find a quote with code {quote_code}.")
+            return
+
+        await ctx.send(embed=self.create_embed(quote))
+
+    @solon.Command()
+    async def delete(self, ctx, quote_code):
+        quote = next((q for q in self.data.messages if q["quote_id"] == int(quote_code)), None)
+        if not quote:
+            await ctx.send(f"{ctx.author.mention} Sorry, I can't find a quote with code {quote_code}.")
+            return
+
+        if quote["author_id"] != ctx.author.id and not self.authorized_to_delete(ctx.author):
+            await ctx.send(f"{ctx.author.mention} Sorry, you don't have permission to remove that quote.")
+            return
+
+        self.data.messages.remove(quote)
+        await ctx.send(f"{ctx.author.mention} Okay, that quote has been removed.")
+
     def create_embed(self, quote):
-        embed = discord.Embed(description=quote["content"])
+        quote_code = quote["quote_id"]
+
+        content = quote["content"]
+        disclaimer = f"The author of this quote can delete it from the bot's memory with the command `quoting delete {quote_code}`"
+
+        description = f"{content}\n\n{disclaimer}"
+
+        embed = discord.Embed(description=description)
 
         author = solon.Bot.get_guild(self.guild_id).get_member(quote["author_id"])
         if author:
@@ -122,6 +153,17 @@ class Quoting:
             return False
 
         for role in can_vote_roles:
+            if role in user.roles:
+                return True
+
+        return False
+
+    def authorized_to_delete(self, user):
+        can_delete_roles = self.settings["can_delete_quotes"]
+        if can_delete_roles is None:
+            return False
+
+        for role in can_delete_roles:
             if role in user.roles:
                 return True
 
