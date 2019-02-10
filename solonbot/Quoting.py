@@ -4,7 +4,7 @@ import logging
 import random
 import solon
 
-from cypher import scramble, unscramble
+from .cypher import scramble, unscramble
 
 __all__ = []
 
