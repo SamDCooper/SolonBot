@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="SolonBot",
-    version="0.1.0",
+    version="0.1.1",
     description="Discord bot for general server and community management. Uses Solon library.",
     author="Falsely True Bots",
     author_email="FalselyTrueBots@users.noreply.github.com",
