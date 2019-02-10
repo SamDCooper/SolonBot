@@ -40,10 +40,13 @@ class Scoreboards:
         await self.show_scoreboard(ctx, scoreboard_name, sorted(sb.items(), key=lambda kv: +kv[1]), num_to_show, 0)
 
     @solon.Command()
-    async def score(self, ctx, scoreboard_name):
+    async def score(self, ctx, scoreboard_name: str, user: solon.converter(discord.Member) = None):
+        if user is None:
+            user = ctx.message.author
+
         identifier = solon.get_identifier(scoreboard_name, ctx.guild.id)
         sb = solon.get_scoreboard_by_identifier(identifier)
-        if ctx.message.author.id not in sb:
+        if user.id not in sb:
             raise solon.CommandError("You aren't ranked yet.")
 
         buffer = self.settings["my_ranks_buffer"]
@@ -52,13 +55,14 @@ class Scoreboards:
 
         my_rank = 0
         for user_id, score in sorted_scoreboard:
-            if ctx.message.author.id == user_id:
+            if user.id == user_id:
                 break
             my_rank = my_rank + 1
 
-        await self.show_scoreboard(ctx, scoreboard_name, sorted_scoreboard, num_to_show, my_rank - buffer)
+        await self.show_scoreboard(ctx, scoreboard_name, sorted_scoreboard, num_to_show, my_rank - buffer, user)
 
-    async def show_scoreboard(self, ctx, scoreboard_name, scoreboard_sorted, num_to_show, starting_from):
+    async def show_scoreboard(self, ctx, scoreboard_name, scoreboard_sorted, num_to_show, starting_from,
+                              highlight_user=None):
         board_txt = ""
 
         num_ranks_to_show = num_to_show
@@ -68,7 +72,7 @@ class Scoreboards:
                 user_id, score = scoreboard_sorted[index]
                 name = solon.get_name_from_user_id(self.guild_id, user_id)
 
-                if user_id == ctx.message.author.id:
+                if highlight_user and user_id == highlight_user.id:
                     fmt = self.settings["line_format_me"]
                 else:
                     fmt = self.settings["line_format"]
