@@ -72,7 +72,8 @@ class Quoting:
 
     @solon.Command()
     async def q(self, ctx, quote_code):
-        quote = next((q for q in self.data.messages if q["quote_id"] == int(quote_code)), None)
+        quote_code = unscramble(quote_code, ctx.guild)
+        quote = next((q for q in self.data.messages if q["quote_id"] == quote_code), None)
         if not quote:
             await ctx.send(f"{ctx.author.mention} Sorry, I can't find a quote with code {quote_code}.")
             return
