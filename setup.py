@@ -9,6 +9,6 @@ setuptools.setup(
     url="https://github.com/FalselyTrueBots",
     packages=["solonbot"],
     install_requires=[
-        "solon @ git+ssh://git@github.com/FalselyTrueBots/solon@7900c0eb7d36673e232639c934c72b43bd88fce7#egg=solon-0.0.3"
+        "solon @ git+ssh://git@github.com/FalselyTrueBots/solon@3bf72ace48fb2b4bdac8ab7ee875011145df0a57#egg=solon-0.0.3"
     ]
 )
