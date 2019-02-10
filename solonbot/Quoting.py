@@ -4,6 +4,8 @@ import logging
 import random
 import solon
 
+import cypher
+
 __all__ = []
 
 log = logging.getLogger(__name__)
@@ -66,7 +68,7 @@ class Quoting:
             index = random.randint(0, num_messages - 1)
             quote = messages[index]
 
-        await ctx.send(embed=self.create_embed(quote))
+        await ctx.send(embed=self.create_embed(quote, ctx.guild))
 
     @solon.Command()
     async def q(self, ctx, quote_code):
@@ -75,11 +77,12 @@ class Quoting:
             await ctx.send(f"{ctx.author.mention} Sorry, I can't find a quote with code {quote_code}.")
             return
 
-        await ctx.send(embed=self.create_embed(quote))
+        await ctx.send(embed=self.create_embed(quote, ctx.guild))
 
     @solon.Command()
     async def delete(self, ctx, quote_code):
-        quote = next((q for q in self.data.messages if q["quote_id"] == int(quote_code)), None)
+        quote_code = cypher.unscramble(quote_code, ctx.guild)
+        quote = next((q for q in self.data.messages if q["quote_id"] == quote_code), None)
         if not quote:
             await ctx.send(f"{ctx.author.mention} Sorry, I can't find a quote with code {quote_code}.")
             return
@@ -91,8 +94,8 @@ class Quoting:
         self.data.messages.remove(quote)
         await ctx.send(f"{ctx.author.mention} Okay, that quote has been removed.")
 
-    def create_embed(self, quote):
-        quote_code = quote["quote_id"]
+    def create_embed(self, quote, guild):
+        quote_code = cypher.scramble(quote["quote_id"], guild)
 
         content = quote["content"]
         disclaimer = f"The author of this quote can delete it from the bot's memory with the command `quoting delete {quote_code}`"
