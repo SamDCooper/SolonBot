@@ -14,6 +14,7 @@ config = solon.get_config(__name__)
 log.info(f"Loading {__name__}")
 
 role_list_name = solon.SerializedList(discord.Role).__name__
+int_to_role_name = solon.SerializedDictionary(int, discord.Role).__name__
 
 default_settings = {
     "can_vote": {"value_serialized": "", "type_name": role_list_name},
@@ -22,7 +23,11 @@ default_settings = {
     "added_emoji": {"value_serialized": "👌", "type_name": "Emoji"},
     "fail_emoji": {"value_serialized": "👎", "type_name": "Emoji"},
     "react_threshold": {"value_serialized": "3", "type_name": "int"},
-    "thumbnail_url": {"value_serialized": "", "type_name": "str"}
+    "thumbnail_url": {"value_serialized": "", "type_name": "str"},
+
+    "award_eligible": {"value_serialized": "", "type_name": "role"},
+    "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
+    "award_method": {"value_serialized": "score", "type_name": "str"}
 }
 
 
@@ -34,6 +39,13 @@ class Data:
     def __init__(self):
         self.next_quote_id = 0
         self.messages = []
+        self.scoreboard = {}
+
+    def post_init(self):
+        if not self.scoreboard:
+            for record in self.messages:
+                author_id = record["author_id"]
+                self.scoreboard[author_id] = self.scoreboard.get(author_id, 0) + 1
 
 
 @solon.Cog(data_type=Data, default_settings=default_settings)
@@ -44,6 +56,14 @@ class Quoting:
         self.data = data
         self.counting = {}  # message id -> number of reacts
         self.recorded_messages = []  # list of message ids
+
+        solon.register_scoreboard(self, guild_id, settings)
+
+        self.data.post_init()
+
+    @property
+    def scoreboard(self):
+        return self.data.scoreboard
 
     @solon.Command()
     async def quote(self, ctx, user: solon.converter(discord.Member) = None):
