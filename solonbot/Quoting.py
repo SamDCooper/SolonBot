@@ -118,7 +118,7 @@ class Quoting:
         embed.set_author(name=f"{author_name} ({time_as_str})", icon_url=avatar_url)
 
         if quote["attachments"]:
-            embed.set_image(url=quote["attachments"])
+            embed.set_image(url=quote["attachments"][0])  # just use first attachment
 
         thumbnail_url = self.settings["thumbnail_url"]
         if thumbnail_url:
