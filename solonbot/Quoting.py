@@ -213,16 +213,23 @@ class Quoting:
         if quote_emoji and solon.emoji_equals(reaction.emoji, quote_emoji) and self.authorized_to_vote(user):
             log.info(f"{user} quote voted on message by {author} ({reaction.message.id}).")
 
-            if message.id not in self.counting and message.id not in self.recorded_messages:
-                log.info(f"Message {message.id} contents are: <{message.content}>")
+            if message.id not in self.recorded_messages:
+                if message.id not in self.counting:
+                    log.info(f"Message {message.id} contents are: <{message.content}>")
 
-            added = self.add_vote(message)
-            if added is not None:
-                if added and self.settings["added_emoji"]:
-                    await message.add_reaction(self.settings["added_emoji"].discord_py_emoji)
+                added = self.add_vote(message)
+                # added ==
+                #   None   if we don't add yet,
+                #   True   if the adding succeeded, and
+                #   False  otherwise.
+                if added is not None:
+                    if added and self.settings["added_emoji"]:
+                        await message.add_reaction(self.settings["added_emoji"].discord_py_emoji)
 
-                elif not added and self.settings["fail_emoji"]:
-                    await message.add_reaction(self.settings["fail_emoji"].discord_py_emoji)
+                    elif not added and self.settings["fail_emoji"]:
+                        await message.add_reaction(self.settings["fail_emoji"].discord_py_emoji)
+
+                    self.recorded_messages.append(message.id)
 
     @solon.Event()
     async def on_reaction_remove(self, reaction, user):
