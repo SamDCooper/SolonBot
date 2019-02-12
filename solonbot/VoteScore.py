@@ -27,7 +27,8 @@ default_settings = {
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
-    "award_method": {"value_serialized": "score", "type_name": "str"}
+    "award_method": {"value_serialized": "score", "type_name": "str"},
+    "award_ranks_exclude": {"value_serialized": "", "type_name": role_list_name}
 }
 
 int_to_role_name = SerializedDictionary(int, discord.Role).__name__

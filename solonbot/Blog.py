@@ -12,22 +12,23 @@ config = solon.get_config(__name__)
 
 log.info(f"Loading {__name__}")
 
-role_list = solon.SerializedList(discord.Role).__name__
+role_list_name = solon.SerializedList(discord.Role).__name__
 int_to_role_name = solon.SerializedDictionary(int, discord.Role).__name__
 
 default_settings = {
-    "can_create_blog": {"value_serialized": "", "type_name": role_list},
-    "readers": {"value_serialized": "", "type_name": role_list},
-    "writers": {"value_serialized": "", "type_name": role_list},
-    "reacters": {"value_serialized": "", "type_name": role_list},
+    "can_create_blog": {"value_serialized": "", "type_name": role_list_name},
+    "readers": {"value_serialized": "", "type_name": role_list_name},
+    "writers": {"value_serialized": "", "type_name": role_list_name},
+    "reacters": {"value_serialized": "", "type_name": role_list_name},
     "category": {"value_serialized": "", "type_name": "CategoryChannel"},
 
     "blogvote_react": {"value_serialized": "", "type_name": "Emoji"},
-    "can_blogvote": {"value_serialized": "", "type_name": role_list},
+    "can_blogvote": {"value_serialized": "", "type_name": role_list_name},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
-    "award_method": {"value_serialized": "score", "type_name": "str"}
+    "award_method": {"value_serialized": "score", "type_name": "str"},
+    "award_ranks_exclude": {"value_serialized": "", "type_name": role_list_name}
 }
 
 

@@ -11,6 +11,7 @@ config = solon.get_config(__name__)
 log.info(f"Loading {__name__}")
 
 int_to_role_name = solon.SerializedDictionary(int, discord.Role).__name__
+role_list_name = solon.SerializedList(discord.Role).__name__
 
 default_settings = {
     "ranking_message_delay": {"value_serialized": "1m", "type_name": "timedelta"},
@@ -19,7 +20,8 @@ default_settings = {
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
-    "award_method": {"value_serialized": "score", "type_name": "str"}
+    "award_method": {"value_serialized": "score", "type_name": "str"},
+    "award_ranks_exclude": {"value_serialized": "", "type_name": role_list_name}
 }
 
 
