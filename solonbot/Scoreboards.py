@@ -15,7 +15,8 @@ default_settings = {
     "line_format_me": {"value_serialized": "**#{rank} {name}: {score:.0f}**", "type_name": "str"},
     "display_num_ranks": {"value_serialized": "15", "type_name": "int"},
     "my_ranks_buffer": {"value_serialized": "2", "type_name": "int"},
-    "thumbnail_url": {"value_serialized": "", "type_name": "str"}
+    "thumbnail_url": {"value_serialized": "", "type_name": "str"},
+    "hide_absent_users": {"value_serialized": "false", "type_name": "bool"}
 }
 
 
@@ -65,11 +66,21 @@ class Scoreboards:
                               highlight_user=None):
         board_txt = ""
 
+        hide_absent_users = self.settings["hide_absent_users"]
+        guild = solon.Bot.get_guild(self.guild_id)
+
         num_ranks_to_show = num_to_show
-        for rank in range(0, num_ranks_to_show):
-            index = rank + starting_from
-            if 0 <= index < len(scoreboard_sorted):
-                user_id, score = scoreboard_sorted[index]
+
+        actual_rank = 0
+        rank_to_display = 1
+        while rank_to_display <= num_ranks_to_show:
+            index = actual_rank + starting_from
+            if not 0 <= index < len(scoreboard_sorted):
+                break
+
+            user_id, score = scoreboard_sorted[index]
+            hide_user = hide_absent_users and guild.get_member(user_id) is None
+            if not hide_user:
                 name = solon.get_name_from_user_id(self.guild_id, user_id)
 
                 if highlight_user and user_id == highlight_user.id:
@@ -77,8 +88,13 @@ class Scoreboards:
                 else:
                     fmt = self.settings["line_format"]
 
-                formatted_rank_line = fmt.format(rank=index + 1, name=name, score=score)
+                formatted_rank_line = fmt.format(rank=rank_to_display, name=name, score=score)
+
                 board_txt += formatted_rank_line + "\n"
+                rank_to_display = rank_to_display + 1
+
+            actual_rank = actual_rank + 1
+
         if board_txt:
             title = f"Leaderboard for {scoreboard_name} on {ctx.guild.name}"
 
