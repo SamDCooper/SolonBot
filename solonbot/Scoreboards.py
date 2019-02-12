@@ -60,7 +60,7 @@ class Scoreboards:
                 break
             my_rank = my_rank + 1
 
-        await self.show_scoreboard(ctx, scoreboard_name, sorted_scoreboard, num_to_show, my_rank - buffer, user)
+        await self.show_scoreboard(ctx, scoreboard_name, sorted_scoreboard, num_to_show, max(my_rank - buffer, 0), user)
 
     async def show_scoreboard(self, ctx, scoreboard_name, scoreboard_sorted, num_to_show, starting_from,
                               highlight_user=None):
@@ -72,26 +72,24 @@ class Scoreboards:
         num_ranks_to_show = num_to_show
 
         actual_rank = 0
-        rank_to_display = 1
-        while rank_to_display <= num_ranks_to_show:
+        rank_to_display = starting_from + 1
+        while rank_to_display <= num_ranks_to_show and rank_to_display < len(scoreboard_sorted):
             index = actual_rank + starting_from
-            if not 0 <= index < len(scoreboard_sorted):
-                break
+            if 0 <= index < len(scoreboard_sorted):
+                user_id, score = scoreboard_sorted[index]
+                hide_user = hide_absent_users and guild.get_member(user_id) is None
+                if not hide_user:
+                    name = solon.get_name_from_user_id(self.guild_id, user_id)
 
-            user_id, score = scoreboard_sorted[index]
-            hide_user = hide_absent_users and guild.get_member(user_id) is None
-            if not hide_user:
-                name = solon.get_name_from_user_id(self.guild_id, user_id)
+                    if highlight_user and user_id == highlight_user.id:
+                        fmt = self.settings["line_format_me"]
+                    else:
+                        fmt = self.settings["line_format"]
 
-                if highlight_user and user_id == highlight_user.id:
-                    fmt = self.settings["line_format_me"]
-                else:
-                    fmt = self.settings["line_format"]
+                    formatted_rank_line = fmt.format(rank=rank_to_display, name=name, score=score)
 
-                formatted_rank_line = fmt.format(rank=rank_to_display, name=name, score=score)
-
-                board_txt += formatted_rank_line + "\n"
-                rank_to_display = rank_to_display + 1
+                    board_txt += formatted_rank_line + "\n"
+                    rank_to_display = rank_to_display + 1
 
             actual_rank = actual_rank + 1
 
