@@ -1,41 +1,44 @@
 import discord
 import logging
 
-from solon import Bot
-from solon import Cog
-from solon import Command
-from solon import Event
-from solon import get_config
-from solon import SerializedList
-from solon import CommandError
+import solon
 
 __all__ = []
 
 # TODO clean up channels which have been deleted from the list and log something out
 
 log = logging.getLogger(__name__)
-config = get_config(__name__)
+config = solon.get_config(__name__)
 
 log.info(f"Loading {__name__}")
 
-role_list = SerializedList(discord.Role)
+role_list = solon.SerializedList(discord.Role).__name__
+int_to_role_name = solon.SerializedDictionary(int, discord.Role).__name__
 
 default_settings = {
-    "can_create_blog": {"value_serialized": "", "type_name": role_list.__name__},
-    "readers": {"value_serialized": "", "type_name": role_list.__name__},
-    "writers": {"value_serialized": "", "type_name": role_list.__name__},
-    "reacters": {"value_serialized": "", "type_name": role_list.__name__},
+    "can_create_blog": {"value_serialized": "", "type_name": role_list},
+    "readers": {"value_serialized": "", "type_name": role_list},
+    "writers": {"value_serialized": "", "type_name": role_list},
+    "reacters": {"value_serialized": "", "type_name": role_list},
     "category": {"value_serialized": "", "type_name": "CategoryChannel"},
+
+    "blogvote_react": {"value_serialized": "", "type_name": "Emoji"},
+    "can_blogvote": {"value_serialized": "", "type_name": role_list},
+
+    "award_eligible": {"value_serialized": "", "type_name": "role"},
+    "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
+    "award_method": {"value_serialized": "score", "type_name": "str"}
 }
 
 
-class BloggingError(CommandError):
+class BloggingError(solon.CommandError):
     pass
 
 
 class Data:
     def __init__(self):
         self.blogs = {}  # user_id -> { channel_id }
+        self.scoreboard = {}
 
 
 def set_overwrites_for_roles(roles, overwrites, **kwargs):
@@ -47,32 +50,107 @@ def set_overwrites_for_roles(roles, overwrites, **kwargs):
                 overwrites[role].update(**kwargs)
 
 
-@Cog(default_settings=default_settings, data_type=Data)
+@solon.Cog(default_settings=default_settings, data_type=Data)
 class Blog:
     def __init__(self, guild_id, settings, data):
         self.guild_id = guild_id
         self.settings = settings
         self.data = data
 
+        solon.register_scoreboard(self, guild_id, settings)
+
+    @property
+    def scoreboard(self):
+        return self.data.scoreboard
+
     def has_blog(self, user):
         channel_id = self.data.blogs.get(user.id, None)
         if channel_id:
-            guild = Bot.get_guild(self.guild_id)
+            guild = solon.Bot.get_guild(self.guild_id)
             channel = guild.get_channel(channel_id)
             return channel is not None
+        return False
+
+    def can_blogvote(self, user):
+        if not self.settings["blogvote_react"]:
+            return False
+
+        can_vote_roles = self.settings["can_blogvote"]
+        if can_vote_roles is None:
+            log.warning(f"Nobody is authorised to vote on {solon.Bot.get_guild(self.guild_id)}.")
+            return False
+
+        for role in can_vote_roles:
+            if role in user.roles:
+                return True
+
         return False
 
     def blog_channel(self, user):
         return self.data.blogs.get(user.id, None)
 
-    @Event()
+    def set_score(self, author, score):
+        self.data.scoreboard[author.id] = score
+
+    def score(self, author):
+        s = self.data.scoreboard.get(author.id)
+        if s is None:
+            return 0
+        return s
+
+    @solon.Event()
+    async def on_reaction_add(self, reaction, user):
+        author = reaction.message.author
+        if author.bot:
+            return
+
+        if author.id == user.id:
+            return
+
+        up_emoji = self.settings["blogvote_react"]
+
+        if up_emoji and solon.emoji_equals(reaction.emoji, up_emoji):
+            if self.can_blogvote(user):
+                blog_id = self.data.blogs.get(reaction.message.author.id, None)
+                if blog_id:
+                    if blog_id == reaction.message.channel.id:
+                        log.info(f"{user} added upvote to message by {author} ({reaction.message.id})")
+                        self.set_score(author, self.score(author) + 1)
+            else:
+                log.info(f"{user} tried to upvote message by {author}, but did not have permission. "
+                         f"({reaction.message.id})")
+
+    @solon.Event()
+    async def on_reaction_remove(self, reaction, user):
+        author = reaction.message.author
+        if author.bot:
+            return
+
+        if author.id == user.id:
+            return
+
+        author = reaction.message.author
+        up_emoji = self.settings["blogvote_react"]
+
+        if up_emoji and solon.emoji_equals(reaction.emoji, up_emoji):
+            if self.can_blogvote(user):
+                blog_id = self.data.blogs.get(user.id, None)
+                if blog_id:
+                    if blog_id == reaction.message.channel.id:
+                        log.info(f"{user} removed upvote on message by {author} ({reaction.message.id})")
+                        self.set_score(author, self.score(author) - 1)
+            else:
+                log.info(f"{user} tried to remove upvote on message by {author}, but did not have permission. "
+                         f"({reaction.message.id})")
+
+    @solon.Event()
     async def on_message(self, message):
         if message.channel.id in self.data.blogs.values():
             top_channel = message.channel
             if top_channel.position == 0:
                 return
 
-            guild = Bot.get_guild(self.guild_id)
+            guild = solon.Bot.get_guild(self.guild_id)
 
             log.info(f"Reordering blogs on guild {guild}. Setting {top_channel} to top.")
 
@@ -108,7 +186,7 @@ class Blog:
             except discord.Forbidden:
                 raise BloggingError("I don't have permission to order channels. I need the Manage Channels permission.")
 
-    @Command()
+    @solon.Command()
     async def create(self, ctx):
         can_create_blog = False
         for role in self.settings["can_create_blog"]:
