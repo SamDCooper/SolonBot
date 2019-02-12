@@ -3,25 +3,17 @@ import re
 
 import discord
 
-from solon import Cog
-from solon import Event
-from solon import SerializedData
-from solon import SerializedList
-from solon import deserialize
-from solon import get_config
-from solon import get_name_from_user_id
-from solon import is_url
-from solon import is_youtube_url
+import solon
 
 __all__ = []
 
 log = logging.getLogger(__name__)
-config = get_config(__name__)
+config = solon.get_config(__name__)
 
 log.info(f"Loading {__name__}")
 
-role_list = SerializedList(discord.Role)
-text_channel_list = SerializedList(discord.TextChannel)
+role_list = solon.SerializedList(discord.Role)
+text_channel_list = solon.SerializedList(discord.TextChannel)
 
 default_settings = {
     "channels": {"value_serialized": "", "type_name": text_channel_list.__name__},
@@ -65,17 +57,17 @@ async def parse_archive(message, settings):
         # Or the last or second word in the message
         if " " in content_remainder:
             content_middle, possible_image_url = content_remainder.rsplit(" ", 1)
-            if is_url(possible_image_url):
+            if solon.is_url(possible_image_url):
                 embedded_url = possible_image_url  # we assume its an image, no big deal if it's not
                 content_remainder = content_middle
             else:
                 possible_image_url, content_end = content_remainder.split(" ", 1)
-                if is_url(possible_image_url):
+                if solon.is_url(possible_image_url):
                     embedded_url = possible_image_url
                     content_remainder = content_end
         else:
             # no description given
-            if is_url(content_remainder):
+            if solon.is_url(content_remainder):
                 embedded_url = content_remainder
                 content_remainder = ""
 
@@ -107,9 +99,9 @@ async def parse_archive(message, settings):
         return None
 
     guild = message.guild
-    target_channel_serialized = SerializedData(value_serialized=channel_value_serialized,
-                                               type_name="TextChannel")
-    target_channel = deserialize(target_channel_serialized, guild)
+    target_channel_serialized = solon.SerializedData(value_serialized=channel_value_serialized,
+                                                     type_name="TextChannel")
+    target_channel = solon.deserialize(target_channel_serialized, guild)
     if not target_channel:
         log_malformed(message, f"channel vs='{channel_value_serialized}' doesn't exist.")
         await message.channel.send(f"I don't recognize that channel")
@@ -162,14 +154,14 @@ class Data:
         self.archive = []
 
 
-@Cog(default_settings=default_settings, data_type=Data)
+@solon.Cog(default_settings=default_settings, data_type=Data)
 class Archive:
     def __init__(self, guild_id, settings, data):
         self.settings = settings
         self.guild_id = guild_id
         self.data = data
 
-    @Event()
+    @solon.Event()
     async def on_message(self, message):
         if message.author.bot:
             return
@@ -179,7 +171,7 @@ class Archive:
             await self.archive(**archive)
 
     async def archive(self, author, description, embedded_url, channel):
-        author_name = get_name_from_user_id(channel.guild.id, author.id)
+        author_name = solon.get_name_from_user_id(channel.guild.id, author.id)
         self.data.archive.append({
             "author": author.id,
             "description": description if description is not None else "",
@@ -188,7 +180,7 @@ class Archive:
             "channel_name": channel.name
         })
 
-        if is_youtube_url(embedded_url):
+        if solon.is_youtube_url(embedded_url):
             youtube_url = embedded_url
             # Have to send this as a separate message, since we can't embed videos in discord.py yet
             await channel.send(youtube_url)
@@ -204,3 +196,40 @@ class Archive:
         embed.set_author(name=author_name, icon_url=author.avatar_url)
 
         await channel.send(embed=embed)
+        await self.bump_channel(channel)
+
+    async def bump_channel(self, top_channel):
+        guild = solon.Bot.get_guild(self.guild_id)
+
+        def order_channel(ch):
+            channel_id = ch.id
+            if channel_id == top_channel.id:
+                return 0  # front element
+
+            channel = guild.get_channel(channel_id)
+            if not channel:
+                return 0xffff  # channel no longer exists, deal with this later
+
+            pivot_position = top_channel.position
+            position = channel.position
+
+            if position < pivot_position:
+                # if above the old position of the top channel,
+                # move channel down by one
+                return position + 1
+            else:
+                # otherwise, dont move channel
+                return position
+
+        channels_ordered = sorted(self.settings["channels"], key=order_channel)
+        try:
+            reason = f"Reordering archive - new message in {top_channel}."
+            for new_position in range(len(channels_ordered)):
+                channel = channels_ordered[new_position]
+                if channel:
+                    if channel.position != new_position:
+                        await channel.edit(position=new_position, reason=reason)
+                        reason = None
+
+        except discord.Forbidden:
+            log.warning(f"I don't have permission to order channels on {guild}. I need the Manage Channels permission.")
