@@ -112,7 +112,7 @@ class Blog:
 
         if up_emoji and solon.emoji_equals(reaction.emoji, up_emoji):
             if self.can_blogvote(user):
-                blog_id = self.data.blogs.get(reaction.message.author.id, None)
+                blog_id = self.data.blogs.get(author.id, None)
                 if blog_id:
                     if blog_id == reaction.message.channel.id:
                         log.info(f"{user} added upvote to message by {author} ({reaction.message.id})")
@@ -135,7 +135,7 @@ class Blog:
 
         if up_emoji and solon.emoji_equals(reaction.emoji, up_emoji):
             if self.can_blogvote(user):
-                blog_id = self.data.blogs.get(user.id, None)
+                blog_id = self.data.blogs.get(author.id, None)
                 if blog_id:
                     if blog_id == reaction.message.channel.id:
                         log.info(f"{user} removed upvote on message by {author} ({reaction.message.id})")
