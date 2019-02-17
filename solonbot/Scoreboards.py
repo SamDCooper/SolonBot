@@ -75,21 +75,25 @@ class Scoreboards:
         rank_to_display = starting_from + 1
         while rank_to_display <= starting_from + num_ranks_to_show and rank_to_display - 1 < len(scoreboard_sorted):
             index = actual_rank + starting_from
-            if 0 <= index < len(scoreboard_sorted):
-                user_id, score = scoreboard_sorted[index]
-                hide_user = hide_absent_users and guild.get_member(user_id) is None
-                if not hide_user:
-                    name = solon.get_name_from_user_id(self.guild_id, user_id)
+            if index < 0:
+                continue
+            if index >= len(scoreboard_sorted):
+                break
 
-                    if highlight_user and user_id == highlight_user.id:
-                        fmt = self.settings["line_format_me"]
-                    else:
-                        fmt = self.settings["line_format"]
+            user_id, score = scoreboard_sorted[index]
+            hide_user = hide_absent_users and guild.get_member(user_id) is None
+            if not hide_user:
+                name = solon.get_name_from_user_id(self.guild_id, user_id)
 
-                    formatted_rank_line = fmt.format(rank=rank_to_display, name=name, score=score)
+                if highlight_user and user_id == highlight_user.id:
+                    fmt = self.settings["line_format_me"]
+                else:
+                    fmt = self.settings["line_format"]
 
-                    board_txt += formatted_rank_line + "\n"
-                    rank_to_display = rank_to_display + 1
+                formatted_rank_line = fmt.format(rank=rank_to_display, name=name, score=score)
+
+                board_txt += formatted_rank_line + "\n"
+                rank_to_display = rank_to_display + 1
 
             actual_rank = actual_rank + 1
 
