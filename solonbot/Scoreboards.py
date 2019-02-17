@@ -73,7 +73,7 @@ class Scoreboards:
 
         actual_rank = 0
         rank_to_display = starting_from + 1
-        while rank_to_display <= starting_from + num_ranks_to_show and rank_to_display < len(scoreboard_sorted):
+        while rank_to_display <= starting_from + num_ranks_to_show and rank_to_display - 1 < len(scoreboard_sorted):
             index = actual_rank + starting_from
             if 0 <= index < len(scoreboard_sorted):
                 user_id, score = scoreboard_sorted[index]
