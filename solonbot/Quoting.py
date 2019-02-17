@@ -204,7 +204,11 @@ class Quoting:
         log.info(f"Vote added on message {message.id}. Now at {self.counting[message.id]}/{react_threshold}.")
 
         if self.counting[message.id] >= react_threshold:
-            return self.create_message_record(message)
+            success = self.create_message_record(message)
+            if success:
+                score = self.data.scoreboard.get(message.author.id, 0)
+                self.data.scoreboard[message.author.id] = score + 1
+            return success
         else:
             return None
 
