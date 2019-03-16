@@ -15,11 +15,19 @@ log.info(f"Loading {__name__}")
 role_list = solon.SerializedList(discord.Role)
 text_channel_list = solon.SerializedList(discord.TextChannel)
 
+role_list_name = solon.SerializedList(discord.Role).__name__
+int_to_role_name = solon.SerializedDictionary(int, discord.Role).__name__
+
 default_settings = {
     "channels": {"value_serialized": "", "type_name": text_channel_list.__name__},
     "require_description": {"value_serialized": "false", "type_name": "bool"},
     "archivist_roles": {"value_serialized": "", "type_name": role_list.__name__},
     "blocked_roles": {"value_serialized": "", "type_name": role_list.__name__},
+
+    "award_eligible": {"value_serialized": "", "type_name": "role"},
+    "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
+    "award_method": {"value_serialized": "score", "type_name": "str"},
+    "award_ranks_exclude": {"value_serialized": "", "type_name": role_list_name}
 }
 
 
@@ -152,6 +160,13 @@ async def parse_archive(message, settings):
 class Data:
     def __init__(self):
         self.archive = []
+        self.scoreboard = {}
+
+    def post_init(self):
+        if not self.scoreboard:
+            for record in self.archive:
+                author_id = record["author"]
+                self.scoreboard[author_id] = self.scoreboard.get(author_id, 0) + 1
 
 
 @solon.Cog(default_settings=default_settings, data_type=Data)
@@ -160,6 +175,14 @@ class Archive:
         self.settings = settings
         self.guild_id = guild_id
         self.data = data
+
+        self.data.post_init()
+
+        solon.register_scoreboard(self, guild_id, settings)
+
+    @property
+    def scoreboard(self):
+        return self.data.scoreboard
 
     @solon.Event()
     async def on_message(self, message):
@@ -194,6 +217,9 @@ class Archive:
         if embedded_url:
             embed.set_image(url=embedded_url)
         embed.set_author(name=author_name, icon_url=author.avatar_url)
+
+        score = self.data.scoreboard.get(author.id, 0)
+        self.data.scoreboard[author.id] = score + 1
 
         await channel.send(embed=embed)
         await self.bump_channel(channel)
