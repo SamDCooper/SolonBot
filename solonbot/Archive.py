@@ -25,6 +25,7 @@ default_settings = {
     "require_description": {"value_serialized": "false", "type_name": "bool"},
     "require_embed_links": {"value_serialized": "true", "type_name": "bool"},
     "submission_bump": {"value_serialized": "true", "type_name": "bool"},
+    "make_embed": {"value_serialized": "true", "type_name": "bool"},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
@@ -214,19 +215,25 @@ class Archive:
             await channel.send(youtube_url)
             embedded_url = None
 
-        embed_kwargs = {}
-        if description:
-            embed_kwargs["description"] = description
+        make_embed = self.settings["make_embed"]
+        if make_embed:
+            embed_kwargs = {}
+            if description:
+                embed_kwargs["description"] = description
 
-        embed = discord.Embed(**embed_kwargs)
-        if embedded_url:
-            embed.set_image(url=embedded_url)
-        embed.set_author(name=author_name, icon_url=author.avatar_url)
+            embed = discord.Embed(**embed_kwargs)
+            if embedded_url:
+                embed.set_image(url=embedded_url)
+            embed.set_author(name=author_name, icon_url=author.avatar_url)
+
+            await channel.send(embed=embed)
+        else:
+            msg = f"**{author_name}:**\n" \
+                  f"{description}"
+            await channel.send(msg)
 
         score = self.data.scoreboard.get(author.id, 0)
         self.data.scoreboard[author.id] = score + 1
-
-        await channel.send(embed=embed)
 
         if self.settings["submission_bump"]:
             await self.bump_channel(channel)
