@@ -24,6 +24,7 @@ default_settings = {
     "blocked_roles": {"value_serialized": "", "type_name": role_list.__name__},
     "require_description": {"value_serialized": "false", "type_name": "bool"},
     "require_embed_links": {"value_serialized": "true", "type_name": "bool"},
+    "submission_bump": {"value_serialized": "true", "type_name": "bool"},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
@@ -58,28 +59,30 @@ async def parse_archive(message, settings):
     # first word must be a channel link
     channel_value_serialized = channel_link
 
+    require_embed_links = settings["require_embed_links"]
     embedded_url = None
-    # Image can either be an attachment
-    if message.attachments:
-        embedded_url = message.attachments[0].url
+    if require_embed_links:
+        # Image can either be an attachment
+        if message.attachments:
+            embedded_url = message.attachments[0].url
 
-    else:
-        # Or the last or second word in the message
-        if " " in content_remainder:
-            content_middle, possible_image_url = content_remainder.rsplit(" ", 1)
-            if solon.is_url(possible_image_url):
-                embedded_url = possible_image_url  # we assume its an image, no big deal if it's not
-                content_remainder = content_middle
-            else:
-                possible_image_url, content_end = content_remainder.split(" ", 1)
-                if solon.is_url(possible_image_url):
-                    embedded_url = possible_image_url
-                    content_remainder = content_end
         else:
-            # no description given
-            if solon.is_url(content_remainder):
-                embedded_url = content_remainder
-                content_remainder = ""
+            # Or the last or second word in the message
+            if " " in content_remainder:
+                content_middle, possible_image_url = content_remainder.rsplit(" ", 1)
+                if solon.is_url(possible_image_url):
+                    embedded_url = possible_image_url  # we assume its an image, no big deal if it's not
+                    content_remainder = content_middle
+                else:
+                    possible_image_url, content_end = content_remainder.split(" ", 1)
+                    if solon.is_url(possible_image_url):
+                        embedded_url = possible_image_url
+                        content_remainder = content_end
+            else:
+                # no description given
+                if solon.is_url(content_remainder):
+                    embedded_url = content_remainder
+                    content_remainder = ""
 
     # With the description being whatever's left, which might be empty
     description = content_remainder
@@ -91,7 +94,6 @@ async def parse_archive(message, settings):
         # be archived.
         return None
 
-    require_embed_links = settings["require_embed_links"]
     if require_embed_links and not embedded_url:
         # image required - again, if we're exiting here it's
         # likely that someone is just sending a message
@@ -225,7 +227,9 @@ class Archive:
         self.data.scoreboard[author.id] = score + 1
 
         await channel.send(embed=embed)
-        await self.bump_channel(channel)
+
+        if self.settings["submission_bump"]:
+            await self.bump_channel(channel)
 
     async def bump_channel(self, top_channel):
         guild = solon.Bot.get_guild(self.guild_id)
