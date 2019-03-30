@@ -20,9 +20,10 @@ int_to_role_name = solon.SerializedDictionary(int, discord.Role).__name__
 
 default_settings = {
     "channels": {"value_serialized": "", "type_name": text_channel_list.__name__},
-    "require_description": {"value_serialized": "false", "type_name": "bool"},
     "archivist_roles": {"value_serialized": "", "type_name": role_list.__name__},
     "blocked_roles": {"value_serialized": "", "type_name": role_list.__name__},
+    "require_description": {"value_serialized": "false", "type_name": "bool"},
+    "require_embed_links": {"value_serialized": "true", "type_name": "bool"},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
@@ -57,6 +58,7 @@ async def parse_archive(message, settings):
     # first word must be a channel link
     channel_value_serialized = channel_link
 
+    embedded_url = None
     # Image can either be an attachment
     if message.attachments:
         embedded_url = message.attachments[0].url
@@ -89,7 +91,8 @@ async def parse_archive(message, settings):
         # be archived.
         return None
 
-    if not embedded_url:
+    require_embed_links = settings["require_embed_links"]
+    if require_embed_links and not embedded_url:
         # image required - again, if we're exiting here it's
         # likely that someone is just sending a message
         # consisting of a channel link, and we shouldn't warn
@@ -203,7 +206,7 @@ class Archive:
             "channel_name": channel.name
         })
 
-        if solon.is_youtube_url(embedded_url):
+        if embedded_url and solon.is_youtube_url(embedded_url):
             youtube_url = embedded_url
             # Have to send this as a separate message, since we can't embed videos in discord.py yet
             await channel.send(youtube_url)
