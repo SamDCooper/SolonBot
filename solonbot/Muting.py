@@ -27,7 +27,7 @@ default_settings = {
     "channel_name": {"value_serialized": "", "type_name": "str"},
     "mute_access_roles": {"value_serialized": "", "type_name": role_list_name},
     "category": {"value_serialized": "", "type_name": "CategoryChannel"},
-    "error_channel": {"value_serialized": "", "type-_name": "TextChannel"}
+    "error_channel": {"value_serialized": "", "type_name": "TextChannel"}
 }
 
 
@@ -55,7 +55,7 @@ class Muting:
                 raise solon.CommandError(f"{m} is already muted.")
 
         for m in members:
-            m.add_roles(mute_role)
+            await m.add_roles(mute_role)
 
         await ctx.send("Successfully muted: [" + " ".join([str(m) for m in members]) + "]")
 
@@ -75,7 +75,7 @@ class Muting:
         if member.id not in self.data.previous_roles:
             raise solon.CommandError(f"I don't have any data on {member}'s previous roles.")
 
-        member.remove_roles(mute_role)
+        await member.remove_roles(mute_role)
 
         await ctx.send(f"Successfully unmuted: {member}")
 
@@ -140,6 +140,23 @@ class Muting:
             channel = await guild.create_text_channel(**text_channel_options)
             self.data.active_mute_channels[member.id] = channel.id
 
+    async def perform_unmute(self, member):
+        guild = solon.Bot.get_guild(self.guild_id)
+
+        roles = [guild.get_role(rId) for rId in self.data.previous_roles[member.id] if guild.get_role(rId) is not None]
+
+        await member.remove_roles(*member.roles[1:])
+        await member.add_roles(*roles)
+
+        if member.id in self.data.active_mute_channels:
+            channel_id = self.data.active_mute_channels[member.id]
+            channel = guild.get_channel(channel_id)
+            if channel:
+                await channel.set_permissions(member, overwrite=None)
+
+            self.data.inactive_mute_channels[member.id] = channel_id
+            del self.data.active_mute_channels[member.id]
+
     @solon.Command(manage_roles=True)
     async def length(self, ctx, time: str, *, member: solon.converter(discord.Member)):
         mute_role = self.settings["mute_role"]
@@ -159,24 +176,7 @@ class Muting:
         self.data.due_out_times[member.id] = calendar.timegm(due_date.timetuple())
 
         due_date_str = due_date.strftime("at %H:%M:%S on %a %-d %b")
-        await ctx.send(f"{member} will be free {due_date_str}.")
-
-    async def perform_unmute(self, member):
-        guild = solon.Bot.get_guild(self.guild_id)
-
-        roles = [guild.get_role(rId) for rId in self.data.previous_roles[member.id] if guild.get_role(rId) is not None]
-
-        await member.remove_roles(*member.roles[1:])
-        await member.add_roles(*roles)
-
-        if member.id in self.data.active_mute_channels:
-            channel_id = self.data.active_mute_channels[member.id]
-            channel = guild.get_channel(channel_id)
-            if channel:
-                await channel.set_permissions(member, overwrite=None)
-
-            self.data.inactive_mute_channels[member.id] = channel_id
-            del self.data.active_mute_channels[member.id]
+        await ctx.send(f"{member} will be free {due_date_str} (UTC).")
 
     @solon.TimedEvent()
     async def clean_up_channels(self):
