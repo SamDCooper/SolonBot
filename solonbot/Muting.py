@@ -145,7 +145,7 @@ class Muting:
         await member.remove_roles(*previous_roles)
 
         create_channel = self.settings["create_channel"]
-        channel_name = self.settings["channel_name"]
+        channel_name = self.settings["channel_name"].format(member=member.name)
         if create_channel and channel_name:
             text_channel_options = {
                 "name": channel_name,
