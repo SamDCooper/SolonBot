@@ -17,7 +17,7 @@ class Data:
     def __init__(self):
         self.previous_roles = {}
         self.active_mute_channels = {}
-        self.inactive_mute_channels = {}
+        self.inactive_mute_channels = []
         self.due_out_times = {}
 
 
@@ -29,6 +29,7 @@ default_settings = {
     "channel_name": {"value_serialized": "", "type_name": "str"},
     "mute_access_roles": {"value_serialized": "", "type_name": role_list_name},
     "category": {"value_serialized": "", "type_name": "CategoryChannel"},
+    "inactive_category": {"value_serialized": "", "type_name": "CategoryChannel"},
     "error_channel": {"value_serialized": "", "type_name": "TextChannel"}
 }
 
@@ -177,8 +178,11 @@ class Muting:
             channel = guild.get_channel(channel_id)
             if channel:
                 await channel.set_permissions(member, overwrite=None)
+                inactivate_category = self.settings["inactive_category"]
+                if inactivate_category:
+                    await channel.edit(category=inactivate_category)
 
-            self.data.inactive_mute_channels[member.id] = channel_id
+                self.data.inactive_mute_channels.append(channel_id)
             del self.data.active_mute_channels[member.id]
 
     @solon.Command(manage_roles=True)
@@ -198,7 +202,7 @@ class Muting:
         if len(self.data.inactive_mute_channels) > 0:
             guild = solon.Bot.get_guild(self.guild_id)
             log.info(f"Cleaning up mute channels on {guild}.")
-            for channel_id in self.data.inactive_mute_channels.values():
+            for channel_id in self.data.inactive_mute_channels:
                 channel = guild.get_channel(channel_id)
                 if channel is not None:
                     await channel.delete(reason=f"Mute is over.")
