@@ -1,8 +1,10 @@
+import asyncio
 import calendar
 import datetime
 import discord
 import logging
 import solon
+
 __all__ = []
 
 log = logging.getLogger(__name__)
@@ -44,15 +46,38 @@ class Muting:
     def guild(self):
         return solon.Bot.get_guild(self.guild_id)
 
+    def assert_can_mute(self, member):
+        mute_role = self.settings["mute_role"]
+
+        if not mute_role:
+            raise solon.CommandError("Mute role not set.")
+
+        guild = self.guild
+        my_highest_role = max(guild.me.roles)
+        highest_role = max(member.roles)
+        if highest_role >= my_highest_role:
+            raise solon.CommandError(f"{member} has a higher role than me.")
+
+    def assert_can_unmute(self, member):
+        mute_role = self.settings["mute_role"]
+
+        if not mute_role:
+            raise solon.CommandError("Mute role not set.")
+
+        guild = self.guild
+        my_highest_role = max(guild.me.roles)
+        highest_role = max(member.roles)
+        if highest_role >= my_highest_role:
+            raise solon.CommandError(f"{member} has a higher role than me.")
+
     @solon.Command(manage_roles=True)
     async def mute(self, ctx, *, members: solon.converter(solon.SerializedList(discord.Member))):
         mute_role = self.settings["mute_role"]
-        if not mute_role:
-            raise solon.CommandError("Mute role not set.")
 
         for m in members:
             if mute_role in m.roles:
                 raise solon.CommandError(f"{m} is already muted.")
+            self.assert_can_mute(m)
 
         for m in members:
             await m.add_roles(mute_role)
@@ -65,9 +90,13 @@ class Muting:
         if mute_role is None:
             raise solon.CommandError(f"No mute role set.")
 
+        if mute_role not in member.roles:
+            raise solon.CommandError(f"{member} is not muted.")
+
         my_highest_role = max(ctx.guild.me.roles)
         if mute_role not in member.roles:
             raise solon.CommandError(f"{member} is not muted.")
+
         highest_role = max(member.roles)
         if highest_role > my_highest_role:
             raise solon.CommandError(f"{member} has a higher role than me.")
@@ -85,6 +114,7 @@ class Muting:
         if mute_role:
             if mute_role in after.roles and mute_role not in before.roles:
                 try:
+                    self.assert_can_mute(after)
                     await self.perform_mute(after)
                 except solon.CommandError as e:
                     errors_channel = self.settings["error_channel"]
@@ -94,6 +124,7 @@ class Muting:
                         raise e
             elif mute_role in before.roles and mute_role not in after.roles:
                 try:
+                    self.assert_can_unmute(after)
                     await self.perform_unmute(after)
                 except solon.CommandError as e:
                     errors_channel = self.settings["error_channel"]
@@ -104,14 +135,7 @@ class Muting:
 
     async def perform_mute(self, member):
         mute_role = self.settings["mute_role"]
-        if mute_role is None:
-            raise solon.CommandError(f"No mute role set.")
-
         guild = self.guild
-        my_highest_role = max(guild.me.roles)
-        highest_role = max(member.roles)
-        if highest_role >= my_highest_role:
-            raise solon.CommandError(f"{member} has a higher role than me.")
 
         previous_roles = [r for r in member.roles[1:] if r != mute_role]
             
@@ -141,7 +165,7 @@ class Muting:
             self.data.active_mute_channels[member.id] = channel.id
 
     async def perform_unmute(self, member):
-        guild = solon.Bot.get_guild(self.guild_id)
+        guild = self.guild
 
         roles = [guild.get_role(rId) for rId in self.data.previous_roles[member.id] if guild.get_role(rId) is not None]
 
@@ -159,16 +183,7 @@ class Muting:
 
     @solon.Command(manage_roles=True)
     async def length(self, ctx, time: str, *, member: solon.converter(discord.Member)):
-        mute_role = self.settings["mute_role"]
-        if mute_role is None:
-            raise solon.CommandError(f"No mute role set.")
-
-        my_highest_role = max(ctx.guild.me.roles)
-        if mute_role not in member.roles:
-            raise solon.CommandError(f"{member} is not muted.")
-        highest_role = max(member.roles)
-        if highest_role > my_highest_role:
-            raise solon.CommandError(f"{member} has a higher role than me.")
+        self.assert_can_unmute(member)
 
         delta = solon.timedelta_from_string(time)
         now = datetime.datetime.utcnow()
