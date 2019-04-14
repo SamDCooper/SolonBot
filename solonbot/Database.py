@@ -1,5 +1,5 @@
 import asyncio
-import datetime
+import calendar
 import discord
 import logging
 import os
@@ -56,7 +56,7 @@ class Database:
             if e.errno != os.errno.EEXIST:
                 raise
 
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
         formatted_date = now.strftime("%Y-%m-%d_%H-%M-%S")
         backup_name = f"{backup_folder}/{formatted_date}.tar.gz"
         log.info(f"Creating backup of database folder at {backup_name}")
@@ -75,7 +75,7 @@ class Database:
             log.warning("Cannot send backups to owner - not set!")
 
         # Clean up backups older than X days
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
         max_backup_age = solon.timedelta_from_string(backup_config["keep_backups_for"])
         minimum_created_time = now - max_backup_age
 
@@ -84,7 +84,7 @@ class Database:
             fpath = os.path.join(backup_folder, filename)
             stat = os.stat(str(fpath))
             time = stat.st_ctime
-            if time < minimum_created_time.timestamp():
+            if time < calendar.timegm(minimum_created_time.timetuple()):
                 log.info(f"Removing {fpath} as it's an older backup.")
                 os.remove(fpath)
 

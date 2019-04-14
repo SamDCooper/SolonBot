@@ -1,3 +1,4 @@
+import calendar
 import datetime
 import discord
 import logging
@@ -25,7 +26,8 @@ default_settings = {
     "create_channel": {"value_serialized": "False", "type_name": "bool"},
     "channel_name": {"value_serialized": "", "type_name": "str"},
     "mute_access_roles": {"value_serialized": "", "type_name": role_list_name},
-    "category": {"value_serialized": "", "type_name": "CategoryChannel"}
+    "category": {"value_serialized": "", "type_name": "CategoryChannel"},
+    "error_channel": {"value_serialized": "", "type-_name": "TextChannel"}
 }
 
 
@@ -52,59 +54,10 @@ class Muting:
             if mute_role in m.roles:
                 raise solon.CommandError(f"{m} is already muted.")
 
-        await self.perform_mute(members, ctx.author)
+        for m in members:
+            m.add_roles(mute_role)
 
         await ctx.send("Successfully muted: [" + " ".join([str(m) for m in members]) + "]")
-
-    @solon.Event()
-    async def on_member_update(self, before, after):
-        mute_role = self.settings["mute_role"]
-        if mute_role:
-            if mute_role in after.roles and mute_role not in before.roles:
-                await self.perform_mute([after])
-
-    async def perform_mute(self, members, requested_by=None):
-        mute_role = self.settings["mute_role"]
-        if mute_role is None:
-            raise solon.CommandError(f"No mute role set.")
-
-        guild = self.guild
-        my_highest_role = max(guild.me.roles)
-        for m in members:
-            highest_role = max(m.roles)
-            if highest_role >= my_highest_role:
-                raise solon.CommandError(f"{m} has a higher role than me.")
-
-        for m in members:
-            add_mute_role = mute_role not in m.roles
-            previous_roles = m.roles[1:] if add_mute_role else [r for r in m.roles[1:] if r != mute_role]
-            
-            self.data.previous_roles[m.id] = [r.id for r in previous_roles]
-            log.info(f"Removing roles {previous_roles} from {m}" + (" and adding {mute_role}" if add_mute_role else ""))
-            await m.remove_roles(*previous_roles, reason=f"Requested by {requested_by}" if requested_by else None)
-            if add_mute_role:
-                await m.add_roles(mute_role)
-
-            create_channel = self.settings["create_channel"]
-            channel_name = self.settings["channel_name"]
-            if create_channel and channel_name:
-                text_channel_options = {
-                    "name": channel_name,
-                    "overwrites": {  # TODO replace overwrites with a "mute template" channel overwrites template
-                        m: discord.PermissionOverwrite(read_messages=True),
-                        guild.roles[0]: discord.PermissionOverwrite(read_messages=False)
-                    }
-                }
-                mute_access_roles = self.settings["mute_access_roles"]
-                if mute_access_roles:
-                    for role in mute_access_roles:
-                        text_channel_options["overwrites"][role] = discord.PermissionOverwrite(read_messages=True)
-                category = self.settings["category"]
-                if category is not None:
-                    text_channel_options["category"] = category
-
-                channel = await guild.create_text_channel(**text_channel_options)
-                self.data.active_mute_channels[m.id] = channel.id
 
     @solon.Command(manage_roles=True)
     async def unmute(self, ctx, *, member: solon.converter(discord.Member)):
@@ -122,9 +75,70 @@ class Muting:
         if member.id not in self.data.previous_roles:
             raise solon.CommandError(f"I don't have any data on {member}'s previous roles.")
 
-        await self.perform_unmute(member)
+        member.remove_roles(mute_role)
 
         await ctx.send(f"Successfully unmuted: {member}")
+
+    @solon.Event()
+    async def on_member_update(self, before, after):
+        mute_role = self.settings["mute_role"]
+        if mute_role:
+            if mute_role in after.roles and mute_role not in before.roles:
+                try:
+                    await self.perform_mute(after)
+                except solon.CommandError as e:
+                    errors_channel = self.settings["error_channel"]
+                    if errors_channel:
+                        await errors_channel.send(f"Muting error: {e}")
+                    else:
+                        raise e
+            elif mute_role in before.roles and mute_role not in after.roles:
+                try:
+                    await self.perform_unmute(after)
+                except solon.CommandError as e:
+                    errors_channel = self.settings["error_channel"]
+                    if errors_channel:
+                        await errors_channel.send(f"Unmuting error: {e}")
+                    else:
+                        raise e
+
+    async def perform_mute(self, member):
+        mute_role = self.settings["mute_role"]
+        if mute_role is None:
+            raise solon.CommandError(f"No mute role set.")
+
+        guild = self.guild
+        my_highest_role = max(guild.me.roles)
+        highest_role = max(member.roles)
+        if highest_role >= my_highest_role:
+            raise solon.CommandError(f"{member} has a higher role than me.")
+
+        previous_roles = [r for r in member.roles[1:] if r != mute_role]
+            
+        self.data.previous_roles[member.id] = [r.id for r in previous_roles]
+        log.info(f"Removing roles {previous_roles} from {member}")
+        await member.remove_roles(*previous_roles)
+
+        create_channel = self.settings["create_channel"]
+        channel_name = self.settings["channel_name"]
+        if create_channel and channel_name:
+            text_channel_options = {
+                "name": channel_name,
+                "overwrites": {  # TODO replace overwrites with a "mute template" channel overwrites template
+                    member: discord.PermissionOverwrite(read_messages=True),
+                    guild.roles[0]: discord.PermissionOverwrite(read_messages=False)
+                }
+            }
+            mute_access_roles = self.settings["mute_access_roles"]
+            if mute_access_roles:
+                for role in mute_access_roles:
+                    text_channel_options["overwrites"][role] = discord.PermissionOverwrite(read_messages=True)
+            category = self.settings["category"]
+            if category is not None:
+                text_channel_options["category"] = category
+
+            channel = await guild.create_text_channel(**text_channel_options)
+            self.data.active_mute_channels[member.id] = channel.id
 
     @solon.Command(manage_roles=True)
     async def length(self, ctx, time: str, *, member: solon.converter(discord.Member)):
@@ -140,9 +154,9 @@ class Muting:
             raise solon.CommandError(f"{member} has a higher role than me.")
 
         delta = solon.timedelta_from_string(time)
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
         due_date = now + delta
-        self.data.due_out_times[member.id] = due_date.timestamp()
+        self.data.due_out_times[member.id] = calendar.timegm(due_date.timetuple())
 
         due_date_str = due_date.strftime("at %H:%M:%S on %a %-d %b")
         await ctx.send(f"{member} will be free {due_date_str}.")
@@ -152,14 +166,14 @@ class Muting:
 
         roles = [guild.get_role(rId) for rId in self.data.previous_roles[member.id] if guild.get_role(rId) is not None]
 
-        await member.remove_roles(*member.roles[1:], reason=f"Unmuting")
+        await member.remove_roles(*member.roles[1:])
         await member.add_roles(*roles)
 
         if member.id in self.data.active_mute_channels:
             channel_id = self.data.active_mute_channels[member.id]
             channel = guild.get_channel(channel_id)
             if channel:
-                await channel.set_permissions(member, overwrite=None, reason="Unmuting")
+                await channel.set_permissions(member, overwrite=None)
 
             self.data.inactive_mute_channels[member.id] = channel_id
             del self.data.active_mute_channels[member.id]
@@ -177,7 +191,7 @@ class Muting:
 
     @solon.TimedEvent()
     async def unmuting_sentry(self):
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
 
         free_members = []
         for member_id, due_out_timestamp in self.data.due_out_times.items():
