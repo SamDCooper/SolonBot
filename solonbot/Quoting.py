@@ -68,6 +68,18 @@ class Quoting:
 
     @solon.Command()
     async def quote(self, ctx, user: solon.converter(discord.Member) = None):
+        quote = self.get_next_random_quote(user)
+        if quote is None:
+            if user is None:
+                await ctx.send("I don't have any quotes stored yet!")
+            else:
+                await ctx.send("I don't have any quotes stored for that user yet!")
+            return
+
+        quote = self.get_next_random_quote(user)
+        await ctx.send(embed=self.create_embed(quote, ctx.guild))
+
+    def get_next_random_quote(self, user):
         if user is None:
             messages = self.data.messages
         else:
@@ -76,20 +88,16 @@ class Quoting:
         num_messages = len(messages)
 
         if num_messages == 0:
-            if user is None:
-                await ctx.send("I don't have any quotes stored yet!")
-            else:
-                await ctx.send("I don't have any quotes stored for that user yet!")
-            return
+            return None
 
         elif num_messages == 1:
-            quote = messages[0]
+            return messages[0]
 
         else:
             index = random.randint(0, num_messages - 1)
-            quote = messages[index]
+            return messages[index]
 
-        await ctx.send(embed=self.create_embed(quote, ctx.guild))
+        return quote
 
     @solon.Command()
     async def q(self, ctx, quote_code):
