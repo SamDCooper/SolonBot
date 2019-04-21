@@ -24,6 +24,7 @@ default_settings = {
     "fail_emoji": {"value_serialized": "👎", "type_name": "Emoji"},
     "react_threshold": {"value_serialized": "3", "type_name": "int"},
     "thumbnail_url": {"value_serialized": "", "type_name": "str"},
+    "cycles_to_reshuffle": {"value_serialized": "5", "type_name": "int"},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
@@ -42,6 +43,7 @@ class Data:
         self.messages = []
         self.scoreboard = {}
         self.last_quoted_idx = {}  # user ids -> index in data.messages last quoted for that user (or None)
+        self.cycles_completed_since_reshuffle = 0
 
     def post_init(self):
         if not self.scoreboard:
@@ -49,7 +51,7 @@ class Data:
                 author_id = record["author_id"]
                 self.scoreboard[author_id] = self.scoreboard.get(author_id, 0) + 1
 
-    def shuffle_messages(self, user=None):
+    def shuffle_messages(self):
         self.last_quoted_idx = {}
         random.shuffle(self.messages)
 
@@ -66,6 +68,7 @@ class Quoting:
         solon.register_scoreboard(self, guild_id, settings)
 
         self.data.post_init()
+        self.reshuffle_if_needed.start(self, solon.timedelta_from_string(config["reshuffle_frequency"]))
 
     @property
     def scoreboard(self):
@@ -98,6 +101,10 @@ class Quoting:
         user_id = user.id if user is not None else None
         last_quoted_index = self.data.last_quoted_idx.get(user_id, None)
         next_quote_index = (last_quoted_index + 1) % num_messages if last_quoted_index is not None else 0
+
+        if last_quoted_index == num_messages - 1:
+            self.data.cycles_completed_since_reshuffle = self.data.cycles_completed_since_reshuffle + 1
+
         self.data.last_quoted_idx[user_id] = next_quote_index
         return messages[next_quote_index]
 
@@ -125,6 +132,15 @@ class Quoting:
 
         self.data.messages.remove(quote)
         await ctx.send(f"{ctx.author.mention} Okay, that quote has been removed.")
+
+    @solon.TimedEvent()
+    async def reshuffle_if_needed(self):
+        cycles_to_reshuffle = self.settings["cycles_to_reshuffle"]
+        if self.data.cycles_completed_since_reshuffle >= cycles_to_reshuffle:
+            log.info(f"Reshuffling quotes on {solon.Bot.get_guild(self.guild_id)}.")
+
+            self.data.shuffle_messages()
+            self.data.cycles_completed_since_reshuffle = 0
 
     def create_embed(self, quote, guild):
         quote_code = scramble(quote["quote_id"], guild)
