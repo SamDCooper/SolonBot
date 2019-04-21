@@ -41,12 +41,17 @@ class Data:
         self.next_quote_id = 0
         self.messages = []
         self.scoreboard = {}
+        self.last_quoted_idx = {}  # user ids -> index in data.messages last quoted for that user (or None)
 
     def post_init(self):
         if not self.scoreboard:
             for record in self.messages:
                 author_id = record["author_id"]
                 self.scoreboard[author_id] = self.scoreboard.get(author_id, 0) + 1
+
+    def shuffle_messages(self, user=None):
+        self.last_quoted_idx = {}
+        random.shuffle(self.messages)
 
 
 @solon.Cog(data_type=Data, default_settings=default_settings)
@@ -68,7 +73,7 @@ class Quoting:
 
     @solon.Command()
     async def quote(self, ctx, user: solon.converter(discord.Member) = None):
-        quote = self.get_next_random_quote(user)
+        quote = self.get_next_quote(user)
         if quote is None:
             if user is None:
                 await ctx.send("I don't have any quotes stored yet!")
@@ -76,28 +81,25 @@ class Quoting:
                 await ctx.send("I don't have any quotes stored for that user yet!")
             return
 
-        quote = self.get_next_random_quote(user)
         await ctx.send(embed=self.create_embed(quote, ctx.guild))
 
-    def get_next_random_quote(self, user):
+    def get_next_quote(self, user):
         if user is None:
             messages = self.data.messages
         else:
             messages = [msg for msg in self.data.messages if message_is_by(msg, user)]
-
         num_messages = len(messages)
 
         if num_messages == 0:
             return None
-
         elif num_messages == 1:
             return messages[0]
 
-        else:
-            index = random.randint(0, num_messages - 1)
-            return messages[index]
-
-        return quote
+        user_id = user.id if user is not None else None
+        last_quoted_index = self.data.last_quoted_idx.get(user_id, None)
+        next_quote_index = (last_quoted_index + 1) % num_messages if last_quoted_index is not None else 0
+        self.data.last_quoted_idx[user_id] = next_quote_index
+        return messages[next_quote_index]
 
     @solon.Command()
     async def q(self, ctx, quote_code):
