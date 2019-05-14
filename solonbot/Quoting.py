@@ -25,6 +25,7 @@ default_settings = {
     "react_threshold": {"value_serialized": "3", "type_name": "int"},
     "thumbnail_url": {"value_serialized": "", "type_name": "str"},
     "cycles_to_reshuffle": {"value_serialized": "5", "type_name": "int"},
+    "default_quote_color": {"value_serialized": "0x979c9f", "type_name": "int"},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
@@ -167,7 +168,7 @@ class Quoting:
 
         time_as_str = datetime.datetime.utcfromtimestamp(quote["date"]).strftime("%d/%m/%y")
 
-        color = discord.Color.light_grey()
+        color = self.settings["default_quote_color"]
         if isinstance(author, discord.Member):
             for role in reversed(author.roles):  # roles are in order from @everyone upwards
                 if role.color != discord.Color.default():
