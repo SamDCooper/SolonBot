@@ -114,7 +114,6 @@ class Quoting:
     def reject_quote(self, quote):
         return False
 
-
     @solon.Command()
     async def q(self, ctx, quote_code):
         quote_code_unscrambled = unscramble(quote_code, ctx.guild)
@@ -157,9 +156,7 @@ class Quoting:
 
         description = f"{content}\n\n{disclaimer}"
 
-        embed = discord.Embed(description=description)
-
-        author = solon.Bot.get_guild(self.guild_id).get_member(quote["author_id"])
+        author = solon.get_member_or_user(guild.id, quote["author_id"])
         if author:
             author_name = solon.get_name_from_user_id(self.guild_id, quote["author_id"])
             avatar_url = author.avatar_url
@@ -169,6 +166,15 @@ class Quoting:
             avatar_url = quote["avatar_url"]
 
         time_as_str = datetime.datetime.utcfromtimestamp(quote["date"]).strftime("%d/%m/%y")
+
+        color = discord.Color.light_grey()
+        if isinstance(author, discord.Member):
+            for role in reversed(author.roles):  # roles are in order from @everyone upwards
+                if role.color != discord.Color.default():
+                    color = role.color
+                    break
+
+        embed = discord.Embed(description=description, color=color)
         embed.set_author(name=f"{author_name} ({time_as_str})", icon_url=avatar_url)
 
         if quote["attachments"]:
