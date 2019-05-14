@@ -77,6 +77,9 @@ class Quoting:
     @solon.Command()
     async def quote(self, ctx, user: solon.converter(discord.Member) = None):
         quote = self.get_next_quote(user)
+        while self.reject_quote(quote):
+            quote = self.get_next_quote(user)
+
         if quote is None:
             if user is None:
                 await ctx.send("I don't have any quotes stored yet!")
@@ -107,6 +110,10 @@ class Quoting:
 
         self.data.last_quoted_idx[user_id] = next_quote_index
         return messages[next_quote_index]
+
+    def reject_quote(self, quote):
+        return False
+
 
     @solon.Command()
     async def q(self, ctx, quote_code):
