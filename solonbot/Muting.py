@@ -138,7 +138,7 @@ class Muting:
         mute_role = self.settings["mute_role"]
         guild = self.guild
 
-        previous_roles = [r for r in member.roles[1:] if r != mute_role]
+        previous_roles = [r for r in member.roles[1:] if r != mute_role if not r.managed]
             
         self.data.previous_roles[member.id] = [r.id for r in previous_roles]
         log.info(f"Removing roles {previous_roles} from {member}")
@@ -167,10 +167,11 @@ class Muting:
 
     async def perform_unmute(self, member):
         guild = self.guild
+        mute_role = self.settings["mute_role"]
 
         roles = [guild.get_role(rId) for rId in self.data.previous_roles[member.id] if guild.get_role(rId) is not None]
 
-        await member.remove_roles(*member.roles[1:])
+        await member.remove_roles(mute_role)
         await member.add_roles(*roles)
 
         if member.id in self.data.active_mute_channels:
