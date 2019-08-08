@@ -19,3 +19,4 @@ from .Activity import *
 from .Quoting import *
 from .AutoReact import *
 from .Noreact import *
+from .Template import *
