@@ -20,7 +20,26 @@ default_settings = {
 
 class Data:
     def __init__(self):
-        self.templates = {}
+        self.templates = {'announcements': {'@everyone': {'read_messages': True, 'send_messages': False},
+                                            'moderators': {'send_messages': True}},
+                          'general': {},
+                          'lobby': {'@everyone': {'read_message_history': True,
+                                                  'read_messages': True,
+                                                  'send_messages': True},
+                                    'access': {'read_messages': False, 'send_messages': False},
+                                    'bot': {'send_messages': True},
+                                    'moderators': {'send_messages': True},
+                                    'muted': {'read_messages': False}},
+                          'mods': {'@everyone': {'read_messages': False},
+                                   'bot': {'read_messages': True},
+                                   'moderators': {'read_messages': True}},
+                          'private': {'@everyone': {'read_messages': False},
+                                      'bot': {'read_messages': True},
+                                      'special access': {'read_messages': True}},
+                          'rules': {'@everyone': {'read_message_history': True,
+                                                  'read_messages': True,
+                                                  'send_messages': False},
+                                    'moderators': {'send_messages': True}}}
 
 
 @solon.Cog(data_type=Data, default_settings=default_settings)
