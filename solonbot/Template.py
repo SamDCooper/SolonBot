@@ -12,15 +12,20 @@ config = solon.get_config(__name__)
 
 log.info(f"Loading {__name__}")
 
+template_settings_type = solon.SerializedDictionary(str, solon.SerializedDictionary(discord.Role,
+                                                                                    solon.SerializedDictionary(str,
+                                                                                                               bool)))
+
 default_settings = {
     "new_channel_name": {"value_serialized": "new {template} channel", "type_name": "str"},
-    "new_channel_category": {"value_serialized": "", "type_name": discord.CategoryChannel.__name__}
+    "new_channel_category": {"value_serialized": "", "type_name": discord.CategoryChannel.__name__},
+    "templates": {"value_serialized": "", "type_name": template_settings_type.__name__}
 }
 
 
 class Data:
     def __init__(self):
-        self.templates = {'announcements': {'@everyone': {'read_messages': True, 'send_messages': False},
+        self.templates = {'announcements': {'@everyone': {'send_messages': False},
                                             'moderators': {'send_messages': True}},
                           'general': {},
                           'lobby': {'@everyone': {'read_message_history': True,
@@ -49,16 +54,25 @@ class Template:
         self.settings = settings
         self.data = data
 
+        if not self.settings["templates"]:
+            identifier = self.__class__.__name__
+            new_templates = template_settings_type()
+            for template_name, overwrites in self.data.templates.items():
+                overwrites_class = new_templates.value_element_class
+                new_templates[template_name] = overwrites_class()
+                for role_name, permissions in overwrites.items():
+                    permissions_class = overwrites_class.value_element_class
+                    role_deser = solon.deserialize(solon.SerializedData(value_serialized=role_name, type_name="role"),
+                                                   guild=solon.Bot.get_guild(guild_id))
+                    new_templates[template_name][role_deser] = permissions_class()
+                    for perm_name, perm_value in permissions.items():
+                        new_templates[template_name][role_deser][perm_name] = perm_value
+            solon.set_setting_value(identifier, "templates", new_templates)
+
     def get_permission_overrides_from_template_name(self, template_name):
-        template_data = self.data.templates.get(template_name)
-        if template_data is not None:
-            overwrites = {
-                solon.deserialize(serialized_data=solon.SerializedData(value_serialized=k, type_name="role"),
-                                  guild=solon.Bot.get_guild(self.guild_id)): discord.PermissionOverwrite(**kwargs)
-                for k, kwargs in template_data.items()
-            }
-            return overwrites
-        return None
+        overwrites = {role: discord.PermissionOverwrite(**kwargs)
+                      for role, kwargs in self.settings["templates"][template_name].items()}
+        return overwrites
 
     @solon.Command(manage_guild=True)
     async def create(self, ctx, template_name: str):
@@ -67,7 +81,9 @@ class Template:
             raise solon.CommandError(f"There is no template with the name {template_name}.")
 
         channel_name = self.settings["new_channel_name"].format(template=template_name)
-        channel = await ctx.guild.create_text_channel(name=channel_name, overwrites=overrides)
+        channel = await ctx.guild.create_text_channel(name=channel_name,
+                                                      overwrites=overrides,
+                                                      category=self.settings["new_channel_category"])
         await ctx.send(f"Successfully created {channel.mention} with template {template_name}.")
 
     @solon.Command(manage_guild=True)
@@ -96,7 +112,7 @@ class Template:
     @solon.Command(manage_guild=True)
     async def list(self, ctx):
         formatted = ""
-        for template_name, template in self.data.templates.items():
+        for template_name, template in self.settings["templates"].items():
             formatted += f"{template_name}:\n"
             for role, overrides in template.items():
                 formatted += f"  {role}:\n"
