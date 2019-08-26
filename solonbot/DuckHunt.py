@@ -21,7 +21,7 @@ default_settings = {
     "golden_duck_points": {"value_serialized": "3", "type_name": "float"},
     "golden_duck_chance": {"value_serialized": "0.2", "type_name": "float"},
     "can_play": {"value_serialized": "", "type_name": "role"},
-    "spawn_rate": {"value_serialized": "0.0452", "type_name": "float"},
+    "spawn_rate": {"value_serialized": "0.06", "type_name": "float"},
     "spawn_channels": {"value_serialized": "", "type_name": channel_list_name},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
@@ -77,7 +77,9 @@ class DuckHunt:
                 log.info(f"Time to spawn a duck on {guild}.")
                 self.spawn_duck = True
         else:
-            self.spawn_duck = False
+            if self.spawn_duck:
+                log.info(f"Spawn expired on {guild}.")
+                self.spawn_duck = False
 
     @solon.Event()
     async def on_message(self, message):
