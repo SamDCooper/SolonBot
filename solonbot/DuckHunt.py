@@ -18,7 +18,7 @@ int_to_role_name = solon.SerializedDictionary(int, discord.Role).__name__
 default_settings = {
     "duck_react": {"value_serialized": "🦆", "type_name": "Emoji"},
     "can_play": {"value_serialized": "", "type_name": "role"},
-    "spawn_rate": {"value_serialized": "0.25", "type_name": "float"},
+    "spawn_rate": {"value_serialized": "0.0452", "type_name": "float"},
     "spawn_channels": {"value_serialized": "", "type_name": channel_list_name},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
@@ -51,11 +51,17 @@ class DuckHunt:
 
     @solon.TimedEvent()
     async def chance_spawn_duck(self):
-        if random.random() < self.settings["spawn_rate"]:
-            guild = solon.Bot.get_guild(self.guild_id)
-            log.info(f"Time to spawn a duck on {guild}.")
+        guild = solon.Bot.get_guild(self.guild_id)
+        if self.spawn_duck:
+            log.info(f"Duck was primed for spawning on {guild} but never spawned.")
+            self.spawn_duck = False
+            return
+
+        spawn_rate = self.settings["spawn_rate"]
+        spawn_chance = random.random()
+        if spawn_chance < spawn_rate:
             if self.current_duck is not None:
-                log.info(f"Despawning old duck, which was still alive.")
+                log.info(f"Despawning old duck on {guild}, which was still alive.")
                 # credit score to bot user
                 me = solon.Bot.user
                 score = self.data.scoreboard.get(me.id, 0)
@@ -65,8 +71,9 @@ class DuckHunt:
                 if duck_react is not None:
                     await self.current_duck.remove_reaction(duck_react.discord_py_emoji, solon.Bot.user)
                 self.current_duck = None
-
-            self.spawn_duck = True
+            else:
+                log.info(f"Time to spawn a duck on {guild}.")
+                self.spawn_duck = True
 
     @solon.Event()
     async def on_message(self, message):
