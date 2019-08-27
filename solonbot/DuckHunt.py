@@ -132,7 +132,7 @@ class DuckHunt:
                         additional = 1 if not self.current_duck_golden else self.settings["golden_duck_points"]
                         self.data.scoreboard[user.id] = score + additional
 
+                        self.current_duck = None
                         await reaction.message.remove_reaction(reaction.emoji, user)
                         await reaction.message.remove_reaction(reaction.emoji, solon.Bot.user)
-                        self.current_duck = None
                         self.current_duck_golden = False
