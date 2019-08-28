@@ -11,6 +11,7 @@ config = solon.get_config(__name__)
 log.info(f"Loading {__name__}")
 
 role_list_name = solon.SerializedList(discord.Role).__name__
+member_list_name = solon.SerializedList(discord.Member).__name__
 channel_list_name = solon.SerializedList(discord.TextChannel).__name__
 emoji_to_int_name = solon.SerializedDictionary(solon.Emoji, int).__name__
 int_to_role_name = solon.SerializedDictionary(int, discord.Role).__name__
@@ -23,6 +24,7 @@ default_settings = {
     "can_play": {"value_serialized": "", "type_name": "role"},
     "spawn_rate": {"value_serialized": "0.06", "type_name": "float"},
     "spawn_channels": {"value_serialized": "", "type_name": channel_list_name},
+    "hidden_users": {"value_serialized": "", "type_name": member_list_name},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
@@ -52,7 +54,8 @@ class DuckHunt:
 
     @property
     def scoreboard(self):
-        return self.data.scoreboard
+        hidden_members = self.settings["hidden_users"]
+        return {k: v for k, v in self.data.scoreboard.items() if k not in [user.id for user in hidden_members]}
 
     @solon.TimedEvent()
     async def chance_spawn_duck(self):
