@@ -25,8 +25,8 @@ role_list_name = solon.SerializedList(discord.Role).__name__
 
 default_settings = {
     "mute_role": {"value_serialized": "", "type_name": "role"},
-    "create_channel": {"value_serialized": "False", "type_name": "bool"},
-    "channel_name": {"value_serialized": "", "type_name": "str"},
+    "create_channel": {"value_serialized": "True", "type_name": "bool"},
+    "channel_name": {"value_serialized": "{member}", "type_name": "str"},
     "mute_access_roles": {"value_serialized": "", "type_name": role_list_name},
     "category": {"value_serialized": "", "type_name": "CategoryChannel"},
     "inactive_category": {"value_serialized": "", "type_name": "CategoryChannel"},

@@ -25,6 +25,9 @@ default_settings = {
     "spawn_rate": {"value_serialized": "0.06", "type_name": "float"},
     "spawn_channels": {"value_serialized": "", "type_name": channel_list_name},
     "hidden_users": {"value_serialized": "", "type_name": member_list_name},
+    "punish_bait": {"value_serialized": "", "type_name": "bool"},
+    "punish_bait_role": {"value_serialized": "", "type_name": "role"},
+    "punish_bait_channel_name": {"value_serialized": "", "type_name": "{member}"},
 
     "award_eligible": {"value_serialized": "", "type_name": "role"},
     "award_ranks": {"value_serialized": "", "type_name": int_to_role_name},
@@ -49,6 +52,8 @@ class DuckHunt:
 
         self.current_duck = None
         self.current_duck_golden = False
+        self.recent_ducks = []
+        self.recent_ducks_max_size = int(config["recent_ducks_max_size"])
 
         solon.register_scoreboard(self, guild_id, settings)
 
@@ -74,6 +79,11 @@ class DuckHunt:
                 duck_react = self.settings["duck_react"]
                 if duck_react is not None:
                     await self.current_duck.remove_reaction(duck_react.discord_py_emoji, solon.Bot.user)
+
+                self.recent_ducks.append(self.current_duck.id)
+                if len(self.recent_ducks) > self.recent_ducks_max_size:
+                    del self.recent_ducks[0]
+
                 self.current_duck = None
                 self.current_duck_golden = False
             else:
@@ -134,6 +144,10 @@ class DuckHunt:
 
                         additional = 1 if not self.current_duck_golden else self.settings["golden_duck_points"]
                         self.data.scoreboard[user.id] = score + additional
+
+                        self.recent_ducks.append(self.current_duck.id)
+                        if len(self.recent_ducks) > self.recent_ducks_max_size:
+                            del self.recent_ducks[0]
 
                         self.current_duck = None
                         await reaction.message.remove_reaction(reaction.emoji, user)
