@@ -1,3 +1,4 @@
+import discord
 import logging
 
 from solon import Cog
@@ -36,7 +37,7 @@ class Globals:
 
 
 @Cog(default_active=True, guild_local=False)
-class Settings:
+class Settings(discord.ext.commands.Cog):
     @Command(manage_guild=True)
     async def set(self, ctx, variable_name, *, value_serialized):
         guild = ctx.guild

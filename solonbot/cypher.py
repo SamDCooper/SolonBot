@@ -1,3 +1,4 @@
+import discord
 import solon
 
 cypher_settings = {
@@ -9,7 +10,7 @@ cypher_settings = {
 
 
 @solon.Cog(default_active=True, default_settings=cypher_settings)
-class Cypher:
+class Cypher(discord.ext.commands.Cog):
     def __init__(self, guild_id, settings):
         pass  # Dummy cog object just for holding settings
 

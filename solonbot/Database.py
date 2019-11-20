@@ -25,7 +25,7 @@ async def run_command(cmd):
 
 
 @solon.Cog(default_active=True, guild_local=False, guild_only=False, toggleable=False)
-class Database:
+class Database(discord.ext.commands.Cog):
     def __init__(self):
         self.timed_save.start(self, solon.save_interval)
         backup_config = config["backup_config"]

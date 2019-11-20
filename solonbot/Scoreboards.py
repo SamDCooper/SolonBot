@@ -21,7 +21,7 @@ default_settings = {
 
 
 @solon.Cog(guild_local=True, default_settings=default_settings)
-class Scoreboards:
+class Scoreboards(discord.ext.commands.Cog):
     def __init__(self, guild_id, settings):
         self.settings = settings
         self.guild_id = guild_id

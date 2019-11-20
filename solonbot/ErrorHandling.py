@@ -19,7 +19,7 @@ log.info(f"Loading {__name__}")
 
 
 @Cog(guild_local=False, guild_only=False, default_active=True, toggleable=False)
-class ErrorHandling:
+class ErrorHandling(discord.ext.commands.Cog):
     @Event()
     async def on_command_error(self, ctx, err):
         excep = err.original if hasattr(err, "original") else err

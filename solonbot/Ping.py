@@ -1,3 +1,4 @@
+import discord
 import logging
 
 from solon import Cog
@@ -13,7 +14,7 @@ log.info(f"Loading {__name__}")
 
 
 @Cog(guild_local=False, guild_only=False)
-class Pinging:
+class Pinging(discord.ext.commands.Cog):
     @Command()
     async def ping(self, ctx):
         await ctx.send("Pong!")

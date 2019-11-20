@@ -58,7 +58,7 @@ class Data:
 
 
 @solon.Cog(data_type=Data, default_settings=default_settings)
-class Quoting:
+class Quoting(discord.ext.commands.Cog):
     def __init__(self, guild_id, settings, data):
         self.guild_id = guild_id
         self.settings = settings

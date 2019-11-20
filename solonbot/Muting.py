@@ -35,7 +35,7 @@ default_settings = {
 
 
 @solon.Cog(default_settings=default_settings, data_type=Data)
-class Muting:
+class Muting(discord.ext.commands.Cog):
     def __init__(self, settings, guild_id, data):
         self.settings = settings
         self.guild_id = guild_id

@@ -52,7 +52,7 @@ def set_overwrites_for_roles(roles, overwrites, **kwargs):
 
 
 @solon.Cog(default_settings=default_settings, data_type=Data)
-class Blog:
+class Blog(discord.ext.commands.Cog):
     def __init__(self, guild_id, settings, data):
         self.guild_id = guild_id
         self.settings = settings

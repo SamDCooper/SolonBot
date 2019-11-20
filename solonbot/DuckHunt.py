@@ -42,7 +42,7 @@ class Data:
 
 
 @solon.Cog(default_settings=default_settings, data_type=Data)
-class DuckHunt:
+class DuckHunt(discord.ext.commands.Cog):
     def __init__(self, guild_id, settings, data):
         self.chance_spawn_duck.start(self, solon.timedelta_from_string(config["chance_spawn_frequency"]))
         self.spawn_duck = False

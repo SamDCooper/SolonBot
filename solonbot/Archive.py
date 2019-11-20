@@ -176,7 +176,7 @@ class Data:
 
 
 @solon.Cog(default_settings=default_settings, data_type=Data)
-class Archive:
+class Archive(discord.ext.commands.Cog):
     def __init__(self, guild_id, settings, data):
         self.settings = settings
         self.guild_id = guild_id
