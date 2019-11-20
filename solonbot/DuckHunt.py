@@ -153,3 +153,13 @@ class DuckHunt:
                         await reaction.message.remove_reaction(reaction.emoji, user)
                         await reaction.message.remove_reaction(reaction.emoji, solon.Bot.user)
                         self.current_duck_golden = False
+        else:
+            if self.settings["punish_bait"]:
+                await self.punish_bait(self.punish_bait_params(reaction, user))
+
+    def punish_bait_params(self, reaction, user):
+        return True
+
+    async def punish_bait(self, params):
+        if params is not None:
+            pass
